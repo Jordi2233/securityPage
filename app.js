@@ -1,13 +1,14 @@
 // *****************************************************************************
 // Modules section
 require('dotenv').config()
-const sha512 = require('js-sha512').sha512;
 const express = require('express');
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
 const https = require('https');
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 const encrypt = require('mongoose-encryption');
+// const bcrypt = require('bcrypt');
+// const saltRounds = 10;
 
 
 const app = express();
@@ -31,10 +32,10 @@ const userSchema = new mongoose.Schema({
 });
 
 
-userSchema.plugin(encrypt, {
-    secret: process.env.SECRET,
-    encryptedFields: ["password"]
-});
+// userSchema.plugin(encrypt, {
+//     secret: process.env.SECRET,
+//     encryptedFields: ["password"]
+// });
 
 const User = new mongoose.model("User", userSchema);
 
@@ -69,14 +70,21 @@ const run = async () => {
             .post((req, res) => {
 
                 const username = req.body.username;
-                const password = sha512(req.body.password);
+                const password = req.body.password;
 
                 User.findOne({
                     email: username
                 }, (err, foundUser) => {
                     if (err) return console.log(err);
                     else {
-                        if (foundUser.password === password) return res.render("secrets");
+                        if (foundUser) {
+                            bcrypt.compare(password, foundUser.password, (err, result) => {
+                                if (result === true) {
+                                    res.render("secrets")
+                                }
+                            });
+                        }
+
                     }
                 })
 
@@ -91,10 +99,11 @@ const run = async () => {
             })
             .post((req, res) => {
 
+                const hash = bcrypt.hashSync(req.body.password, saltRounds);
 
                 const newUser = new User({
                     email: req.body.username,
-                    password: sha512(req.body.password)
+                    password: hash
                 });
 
                 newUser.save((err) => {
@@ -106,6 +115,12 @@ const run = async () => {
                 })
 
             });
+
+        app.get("/logout", (req, res) => {
+            res.redirect("/")
+        });
+
+            
 
 
         // *****************************************************************************
