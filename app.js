@@ -34,41 +34,6 @@ app.use(session({
 
 }));
 
-app.use(passport.initialize());
-app.use(passport.session());
-
-passport.use(new GoogleStrategy({
-        clientID: process.env.CLIENT_ID,
-        clientSecret: process.env.CLIENT_SECRET,
-        callbackURL: "http://localhost:3000/auth/google/secrets"
-    },
-    (accessToken, refreshToken, profile, cb) => {
-        User.findOrCreate({
-            username: profile.emails[0].value,
-            googleId: profile.id
-        }, (err, user) => {
-            return cb(err, user);
-        });
-    }
-));
-
-passport.use(new GitHubStrategy({
-        clientID: process.env.GITHUB_CLIENT_ID,
-        clientSecret: process.env.GITHUB_CLIENT_SECRET,
-        callbackURL: "http://localhost:3000/auth/github/secrets"
-    },
-    function (accessToken, refreshToken, profile, cb) {
-        User.findOrCreate({
-            githubId: profile.id
-        }, (err, user) => {
-            return cb(err, user);
-        });
-    }
-));
-
-
-
-
 // *****************************************************************************
 // MongoDB section
 
@@ -105,6 +70,45 @@ passport.deserializeUser(function (id, done) {
         done(err, user);
     });
 });
+
+// Passport strategy section
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.use(new GoogleStrategy({
+        clientID: process.env.CLIENT_ID,
+        clientSecret: process.env.CLIENT_SECRET,
+        callbackURL: "http://localhost:3000/auth/google/secrets"
+    },
+    (accessToken, refreshToken, profile, cb) => {
+        User.findOrCreate({
+            username: profile.emails[0].value,
+            googleId: profile.id
+        }, (err, user) => {
+            return cb(err, user);
+        });
+    }
+));
+
+passport.use(new GitHubStrategy({
+        clientID: process.env.GITHUB_CLIENT_ID,
+        clientSecret: process.env.GITHUB_CLIENT_SECRET,
+        callbackURL: "http://localhost:3000/auth/github/secrets"
+    },
+    function (accessToken, refreshToken, profile, cb) {
+        User.findOrCreate({
+            githubId: profile.id
+        }, (err, user) => {
+            return cb(err, user);
+        });
+    }
+));
+
+
+
+
+
 
 
 // *****************************************************************************
@@ -148,7 +152,6 @@ const run = async () => {
             });
 
 
-
         // Login route
         app.route("/login")
 
@@ -186,10 +189,29 @@ const run = async () => {
 
             });
 
-        app.get("/logout", (req, res) => {
-            req.logout();
-            res.redirect("/")
-        });
+        app.route("/submit")
+            .get((req, res) => {
+                res.set('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stal e=0, post-check=0, pre-check=0');
+
+                if (req.isAuthenticated()) {
+                    res.render("submit");
+                } else {
+                    res.redirect("/login");
+                }
+            })
+            .post((req, res) => {
+                const submittedSecret = req.body.secret;
+                User.findById(req.user._id, (err, foundUser) => {
+                    if (err) {
+                        console.log(err);
+                    } if (foundUser) {
+                        foundUser.secret = submittedSecret;
+                        foundUser.save();
+                        res.redirect("/secrets");
+                    }
+                })
+
+            });
 
         app.get("/secrets", (req, res) => {
             res.set('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stal e=0, post-check=0, pre-check=0');
@@ -199,6 +221,11 @@ const run = async () => {
             } else {
                 res.redirect("/login");
             }
+        });
+
+        app.get("/logout", (req, res) => {
+            req.logout();
+            res.redirect("/")
         });
 
 
