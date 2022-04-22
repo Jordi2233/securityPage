@@ -10,6 +10,7 @@ const passport = require("passport");
 const passportLocal = require("passport-local")
 const passportLocalMongoose = require("passport-local-mongoose");
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const GitHubStrategy = require('passport-github').Strategy;
 const findOrCreate = require("mongoose-findorcreate");
 
 
@@ -43,7 +44,22 @@ passport.use(new GoogleStrategy({
     },
     (accessToken, refreshToken, profile, cb) => {
         User.findOrCreate({
+            username: profile.emails[0].value,
             googleId: profile.id
+        }, (err, user) => {
+            return cb(err, user);
+        });
+    }
+));
+
+passport.use(new GitHubStrategy({
+        clientID: process.env.GITHUB_CLIENT_ID,
+        clientSecret: process.env.GITHUB_CLIENT_SECRET,
+        callbackURL: "http://localhost:3000/auth/github/secrets"
+    },
+    function (accessToken, refreshToken, profile, cb) {
+        User.findOrCreate({
+            githubId: profile.id
         }, (err, user) => {
             return cb(err, user);
         });
@@ -69,6 +85,7 @@ const userSchema = new mongoose.Schema({
     email: String,
     password: String,
     googleId: String,
+    githubId: String,
     secret: String
 });
 
@@ -118,6 +135,18 @@ const run = async () => {
                 res.redirect("/secrets");
             });
 
+        // Github route
+        app.route("/auth/github")
+            .get(passport.authenticate('github'));
+
+        app.get("/auth/github/secrets",
+            passport.authenticate('github', {
+                failureRedirect: '/login'
+            }),
+            function (req, res) {
+                res.redirect("/secrets");
+            });
+
 
 
         // Login route
@@ -127,11 +156,10 @@ const run = async () => {
                 res.render("login");
             })
 
-            .post(passport.authenticate('local', { 
+            .post(passport.authenticate('local', {
                 successRedirect: '/secrets',
-                failureRedirect: '/login' 
-                })
-);
+                failureRedirect: '/login'
+            }));
 
 
         // Register route
@@ -187,7 +215,3 @@ const run = async () => {
 }
 
 run().catch(console.dir);
-
-
-
-
