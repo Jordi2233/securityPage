@@ -12,6 +12,7 @@ const passportLocalMongoose = require("passport-local-mongoose");
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const GitHubStrategy = require('passport-github').Strategy;
 const findOrCreate = require("mongoose-findorcreate");
+const e = require('express');
 
 
 const app = express();
@@ -123,6 +124,7 @@ const run = async () => {
         // Home route
         app.get("/", (req, res) => {
             res.render("home");
+            console.table(res);
         });
 
         // Google route
