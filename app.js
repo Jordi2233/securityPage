@@ -124,7 +124,6 @@ const run = async () => {
         // Home route
         app.get("/", (req, res) => {
             res.render("home");
-            console.table(res);
         });
 
         // Google route
@@ -254,7 +253,7 @@ const run = async () => {
 
         // *****************************************************************************
         // Listen section
-        app.listen(3000, () => {
+        app.listen(process.env.PORT || 3000, () => {
             console.log("Server open at 3000 port!");
         });
     } catch (err) {
